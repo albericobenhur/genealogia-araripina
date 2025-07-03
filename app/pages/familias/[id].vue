@@ -1,10 +1,13 @@
 <template>
   <!-- Hero Banner -->
   <v-banner 
-    class="bg-gradient-to-r from-primary to-secondary text-white" 
+    class="bg-primary text-white position-relative" 
     height="300"
   >
-    <v-container>
+    <!-- Overlay para garantir contraste -->
+    <div class="position-absolute w-100 h-100 bg-black" style="opacity: 0.3; top: 0; left: 0;"></div>
+    
+    <v-container class="position-relative" style="z-index: 2;">
       <v-row align="center" class="fill-height">
         <v-col cols="12">
           <v-breadcrumbs
@@ -23,10 +26,10 @@
             </template>
           </v-breadcrumbs>
           
-          <h1 class="text-h3 font-weight-bold mb-2">
+          <h1 class="text-h3 font-weight-bold mb-2 text-white">
             Família {{ familyData.name }}
           </h1>
-          <p class="text-h6 font-weight-light">
+          <p class="text-h6 font-weight-light text-white">
             {{ familyData.members.length }} {{ familyData.members.length === 1 ? 'membro registrado' : 'membros registrados' }}
           </p>
         </v-col>
@@ -330,7 +333,10 @@ const buscarDadosFamilia = async (): Promise<void> => {
       }
     }
     
-    familyData.value = dadosMock[familyId] ?? dadosMock.silva
+    const dados = dadosMock[familyId] || dadosMock.silva
+    if (dados) {
+      familyData.value = dados
+    }
     
     // Atualizar breadcrumb com nome da família
     if (breadcrumbItems.value[2]) {
