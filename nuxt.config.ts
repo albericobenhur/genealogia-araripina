@@ -7,7 +7,8 @@ export default defineNuxtConfig({
   },
   css: [
     'vuetify/lib/styles/main.sass',
-    '@mdi/font/css/materialdesignicons.min.css'
+    '@mdi/font/css/materialdesignicons.min.css',
+    '~/assets/css/utilities.css'
   ],
   build: {
     transpile: ['vuetify']
@@ -20,5 +21,10 @@ export default defineNuxtConfig({
       { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap' }
     ]
   }
-}
+},
+runtimeConfig: {
+  public: {
+    apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8055'
+  }
+},
 })
