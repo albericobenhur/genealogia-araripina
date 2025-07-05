@@ -1,5 +1,19 @@
 <template>
   <v-main class="pa-0">
+    <!-- Alerta de Em Construção -->
+    <v-alert
+      type="info"
+      variant="outlined"
+      class="ma-4"
+      icon="mdi-hammer-wrench"
+      closable
+    >
+      <v-alert-title class="font-weight-bold">
+        🚧 Página em Construção
+      </v-alert-title>
+      Esta seção está sendo desenvolvida. Em breve você poderá explorar as famílias cadastradas em nossa genealogia com funcionalidades completas.
+    </v-alert>
+
     <v-container>
       <header class="mb-6">
         <v-row>
@@ -61,20 +75,45 @@
           </v-col>
         </v-row>
       </section>
+     
     </v-container>
   </v-main>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// Interfaces
+interface Familia {
+  sobrenome: string
+  membros: number
+}
+
 // Dados das famílias
-const familias = [
+const config = useRuntimeConfig()
+
+const familias: Familia[] = [
   { sobrenome: 'Silva', membros: 42 },
   { sobrenome: 'Souza', membros: 37 },
   { sobrenome: 'Lima', membros: 29 }
 ]
 
 // Função para navegar para detalhes da família
-const verDetalhes = (familia) => {
+const verDetalhes = (familia: Familia): void => {
   navigateTo(`/familias/${familia.sobrenome.toLowerCase()}`)
 }
+
+async function fetchFamilias() {
+  try {
+    const { data, error } = await useFetch(`${config.public.apiBase}/items/families`)
+    if (error.value) {
+      console.error('Erro ao buscar famílias:', error.value)
+      return []
+    }
+    return { familias: data.value || [] }
+  } catch (error) {
+    console.error('Erro ao buscar famílias:', error)
+    return { familias: [], total_count: 0 }
+  }
+}
+
+const dataResponse = await fetchFamilias()
 </script>

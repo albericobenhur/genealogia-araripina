@@ -140,6 +140,12 @@ const navigationItems = [
     icon: 'mdi-account-group'
   },
   {
+    title: 'Famílias',
+    value: 'familias',
+    to: '/familias',
+    icon: 'mdi-family-tree'
+  },
+  {
     title: 'Sobre',
     value: 'sobre',
     to: '/sobre',

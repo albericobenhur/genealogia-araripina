@@ -1,4 +1,18 @@
 <template>
+  <!-- Alerta de Em Construção -->
+  <v-alert
+    type="info"
+    variant="outlined"
+    class="ma-4"
+    icon="mdi-hammer-wrench"
+    closable
+  >
+    <v-alert-title class="font-weight-bold">
+      🚧 Página em Construção
+    </v-alert-title>
+    Esta página de detalhes da família está sendo desenvolvida. Os dados exibidos são apenas para demonstração das funcionalidades que estarão disponíveis em breve.
+  </v-alert>
+
   <!-- Hero Banner -->
   <v-banner 
     class="bg-primary text-white position-relative" 

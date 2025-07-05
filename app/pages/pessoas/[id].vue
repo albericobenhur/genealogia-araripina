@@ -116,42 +116,235 @@
     </div>
 </template>
 
-<script setup>
-const route = useRoute()
-const loading = ref(true)
-const person = ref(null)
+<script setup lang="ts">
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
 
-const fetchPerson = async () => {
-    try {
-        loading.value = true
-        // Simulated API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Mock data
-        person.value = {
-            id: route.params.id,
-            name: 'João Silva',
-            fullName: 'João da Silva Santos',
-            birthDate: '15/03/1950',
-            deathDate: null,
-            birthPlace: 'Araripina, PE',
-            profession: 'Agricultor',
-            photo: null,
-            parents: [
-                { id: '1', name: 'Maria Silva' },
-                { id: '2', name: 'José Santos' }
-            ],
-            children: [
-                { id: '3', name: 'Ana Silva' },
-                { id: '4', name: 'Pedro Silva' }
-            ]
-        }
-    } catch (error) {
-        person.value = null
-    } finally {
-        loading.value = false
-    }
+interface ApiPerson {
+  id: string
+  nome: string
+  apelido?: string
+  nascimento?: string
+  falecimento?: string
+  falecido: boolean
+  status: string
+  pai?: {
+    id: string
+    nome: string
+  }
+  mae?: {
+    id: string
+    nome: string
+  }
 }
 
-onMounted(fetchPerson)
+interface ApiChild {
+  id: string
+  nome: string
+  apelido?: string
+}
+
+interface Parent {
+  id: string
+  name: string
+}
+
+interface Child {
+  id: string
+  name: string
+}
+
+interface Person {
+  id: string
+  name: string
+  fullName: string
+  birthDate: string
+  deathDate: string | null
+  birthPlace: string
+  profession: string
+  photo: string | null
+  parents: Parent[]
+  children: Child[]
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const PERSON_FIELDS = [
+  'pai.nome', 
+  'pai.id', 
+  'mae.id',
+  'mae.nome', 
+  'falecimento', 
+  'apelido', 
+  'falecido', 
+  'nome', 
+  'id', 
+  'status',
+  'nascimento'
+] as const
+
+const CHILDREN_FIELDS = [
+  'id', 
+  'nome', 
+  'apelido'
+] as const
+
+const DEFAULT_VALUES = {
+  name: 'Nome não informado',
+  fullName: 'Nome completo não informado',
+  birthDate: 'Data não informada',
+  birthPlace: 'Local não informado',
+  profession: 'Profissão não informada'
+} as const
+
+// ============================================================================
+// COMPOSABLES & STATE
+// ============================================================================
+
+const config = useRuntimeConfig()
+const route = useRoute()
+const loading = ref(true)
+const person = ref<Person | null>(null)
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const formatDate = (dateString: string): string => {
+  try {
+    return new Date(dateString).toLocaleDateString('pt-BR')
+  } catch {
+    return DEFAULT_VALUES.birthDate
+  }
+}
+
+const getPersonName = (apiPerson: ApiPerson): string => {
+  return apiPerson.nome || apiPerson.apelido || DEFAULT_VALUES.name
+}
+
+const getChildName = (apiChild: ApiChild): string => {
+  return apiChild.nome || apiChild.apelido || DEFAULT_VALUES.name
+}
+
+// ============================================================================
+// API SERVICES
+// ============================================================================
+
+const fetchPersonById = async (personId: string): Promise<ApiPerson | null> => {
+  try {
+    const { data } = await $fetch(`${config.public.apiBase}/items/people/${personId}`, {
+      params: { 
+        fields: PERSON_FIELDS
+      } 
+    })
+    return data
+  } catch (error) {
+    console.error('Erro ao carregar pessoa:', error)
+    return null
+  }
+}
+
+const fetchChildrenByParentId = async (parentId: string): Promise<ApiChild[]> => {
+  try {
+    const { data } = await $fetch(`${config.public.apiBase}/items/people`, {
+      params: { 
+        filter: {
+          _or: [
+            { pai: { _eq: parentId } },
+            { mae: { _eq: parentId } }
+          ]
+        },
+        fields: CHILDREN_FIELDS
+      } 
+    })
+    return data || []
+  } catch (error) {
+    console.error('Erro ao carregar filhos:', error)
+    return []
+  }
+}
+
+// ============================================================================
+// DATA TRANSFORMATION
+// ============================================================================
+
+const mapParents = (apiPerson: ApiPerson): Parent[] => {
+  const parents: Parent[] = []
+  
+  if (apiPerson.pai) {
+    parents.push({
+      id: apiPerson.pai.id,
+      name: apiPerson.pai.nome
+    })
+  }
+  
+  if (apiPerson.mae) {
+    parents.push({
+      id: apiPerson.mae.id,
+      name: apiPerson.mae.nome
+    })
+  }
+  
+  return parents
+}
+
+const mapChildren = (apiChildren: ApiChild[]): Child[] => {
+  return apiChildren.map(child => ({
+    id: child.id,
+    name: getChildName(child)
+  }))
+}
+
+const mapPersonFromApi = (apiPerson: ApiPerson, apiChildren: ApiChild[] = []): Person => {
+  return {
+    id: apiPerson.id,
+    name: getPersonName(apiPerson),
+    fullName: apiPerson.nome || DEFAULT_VALUES.fullName,
+    birthDate: apiPerson.nascimento ? formatDate(apiPerson.nascimento) : DEFAULT_VALUES.birthDate,
+    deathDate: apiPerson.falecido && apiPerson.falecimento ? formatDate(apiPerson.falecimento) : null,
+    birthPlace: DEFAULT_VALUES.birthPlace,
+    profession: DEFAULT_VALUES.profession,
+    photo: null,
+    parents: mapParents(apiPerson),
+    children: mapChildren(apiChildren)
+  }
+}
+
+// ============================================================================
+// BUSINESS LOGIC
+// ============================================================================
+
+const loadPersonData = async (): Promise<void> => {
+  try {
+    loading.value = true
+    const personId = route.params.id as string
+    
+    const [apiPerson, apiChildren] = await Promise.all([
+      fetchPersonById(personId),
+      fetchChildrenByParentId(personId)
+    ])
+    
+    if (!apiPerson) {
+      person.value = null
+      return
+    }
+    
+    person.value = mapPersonFromApi(apiPerson, apiChildren)
+    
+  } catch (error) {
+    console.error('Erro ao carregar dados da pessoa:', error)
+    person.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+// ============================================================================
+// LIFECYCLE
+// ============================================================================
+
+onMounted(loadPersonData)
 </script>

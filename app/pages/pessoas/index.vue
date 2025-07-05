@@ -31,6 +31,8 @@
     <!-- Busca e Filtros -->
     <v-form class="py-6 bg-white border-b-thin">
       <v-container>
+ 
+       
         <v-row>
           <v-col cols="12" md="8">
             <v-text-field
@@ -120,15 +122,11 @@
                 <v-card-item class="text-center mb-3 pa-0">
                   <v-avatar
                     size="64"
-                    :color="pessoa.foto ? undefined : 'primary'"
+                    :color="'primary'"
                     class="mb-2 elevation-2"
                   >
-                    <v-img
-                      v-if="pessoa.foto"
-                      :src="pessoa.foto"
-                      :alt="`Foto de ${pessoa.nome}`"
-                    />
-                    <v-icon v-else color="white" size="32">
+                  
+                    <v-icon color="white" size="32">
                       mdi-account
                     </v-icon>
                   </v-avatar>
@@ -143,7 +141,7 @@
                 <v-card-subtitle class="text-center text-body-2 text-medium-emphasis mb-3 pa-0">
                   <div v-if="pessoa.nascimento" class="d-flex align-center justify-center mb-1">
                     <v-icon size="16" class="mr-1">mdi-calendar</v-icon>
-                    {{ formatarData(pessoa.nascimento) }}
+                    {{ new Date(pessoa.nascimento) }}
                   </div>
                   <div v-if="pessoa.local" class="d-flex align-center justify-center">
                     <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
@@ -205,12 +203,11 @@ useSeoMeta({
 
 // Interfaces
 interface Pessoa {
-  id: number
+  id: string
   nome: string
-  nascimento?: number
+  nascimento: string
   local?: string
-  foto?: string
-  apelidos?: string[]
+  apelido: string
 }
 
 interface OpcaoOrdenacao {
@@ -230,7 +227,9 @@ const searchQuery = ref<string>(
 const ordenacao = ref('nome')
 const paginaAtual = ref(1)
 const carregando = ref(true)
-const pessoas = ref<Pessoa[]>([])
+const pessoas = ref<Pessoa[] | undefined>([])
+
+pessoas.value = await getPeoples()
 
 // Constants
 const ITENS_POR_PAGINA = 12
@@ -252,9 +251,7 @@ const pessoasFiltradas = computed(() => {
     const query = searchQuery.value.toLowerCase()
     resultado = resultado.filter(pessoa => 
       pessoa.nome.toLowerCase().includes(query) ||
-      pessoa.apelidos?.some(apelido => 
-        apelido.toLowerCase().includes(query)
-      ) ||
+      pessoa.apelido.toLowerCase().includes(query) ||
       pessoa.local?.toLowerCase().includes(query)
     )
   }
@@ -265,9 +262,9 @@ const pessoasFiltradas = computed(() => {
       case 'nome-desc':
         return b.nome.localeCompare(a.nome)
       case 'recente':
-        return (b.nascimento || 0) - (a.nascimento || 0)
+        return new Date(b.nascimento).getTime() - new Date(a.nascimento).getTime()
       case 'antigo':
-        return (a.nascimento || 0) - (b.nascimento || 0)
+        return new Date(a.nascimento).getTime() - new Date(b.nascimento).getTime()
       default:
         return a.nome.localeCompare(b.nome)
     }
@@ -290,47 +287,7 @@ const carregarPessoas = async (): Promise<void> => {
     carregando.value = true
     
     // Dados mock para desenvolvimento
-    pessoas.value = [
-      { 
-        id: 1, 
-        nome: "Ana Maria Silva", 
-        nascimento: 1980, 
-        local: "Araripina",
-        apelidos: ["Ana"]
-      },
-      { 
-        id: 2, 
-        nome: "Bruno Souza Santos", 
-        nascimento: 1992, 
-        local: "Trindade"
-      },
-      { 
-        id: 3, 
-        nome: "Silvano Sales Oliveira", 
-        nascimento: 1975, 
-        local: "Bodocó"
-      },
-      { 
-        id: 4, 
-        nome: "Carlos Lima Ferreira", 
-        nascimento: 1988, 
-        local: "Araripina"
-      },
-      { 
-        id: 5, 
-        nome: "Maria das Dores", 
-        nascimento: 1950, 
-        local: "Ouricuri",
-        apelidos: ["Dora", "Dotinha"]
-      },
-      { 
-        id: 6, 
-        nome: "João Pedro Nascimento", 
-        nascimento: 1965, 
-        local: "Araripina"
-      }
-    ]
-
+  
     // TODO: Substituir por chamada real à API
     // const { data } = await $fetch(`${config.public.apiBase}/items/people`)
     // pessoas.value = data
@@ -363,6 +320,25 @@ const abrirFormulario = (): void => {
   // TODO: Implementar modal de adicionar pessoa
   console.log('Abrir formulário de nova pessoa')
 }
+
+async function getPeoples(p: number = 1) {
+  try {
+    const data: { data: Pessoa[] } = await $fetch(`${config.public.apiBase}/items/people`, 
+      { 
+        params: { 
+          fields: ['pai.nome', 'mae.nome', 'falecimento', 'apelido', 'falecido', 'nome', 'id', 'status'],
+          limit: -1,
+          page: p
+        } 
+      })
+
+    return data.data
+
+  } catch (error) {
+    console.error('Erro ao carregar pessoas:', error)
+  }
+}
+
 
 // Lifecycle
 onMounted(() => {
